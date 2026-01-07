@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "774375747236",
+    "project_id": "mobile-c2195",
+    "storage_bucket": "mobile-c2195.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:774375747236:android:7db068a4ead38320914031",
+        "android_client_info": {
+          "package_name": "com.example.tourismapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9Uly1t53mlX9IR5a36oYKu2KQ6lqBlY8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

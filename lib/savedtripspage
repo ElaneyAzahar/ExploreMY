@@ -1,0 +1,154 @@
+import 'dart:convert'; // For JSON decoding
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class SavedTripsPage extends StatefulWidget {
+  const SavedTripsPage({super.key});
+
+  @override
+  State<SavedTripsPage> createState() => _SavedTripsPageState();
+}
+
+class _SavedTripsPageState extends State<SavedTripsPage> {
+  List<dynamic> _trips = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrips();
+  }
+
+  // 1. Load data from SharedPreferences
+  Future<void> _loadTrips() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('savedtrips');
+
+    if (data != null && mounted) {
+      setState(() {
+        // Decode the JSON string into a List
+        List<dynamic> loadedTrips = jsonDecode(data);
+        // Reverse the list so the newest trips appear at the top
+        _trips = loadedTrips.reversed.toList();
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // 2. Delete a trip and update SharedPreferences
+  Future<void> _deleteTrip(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    setState(() {
+      _trips.removeWhere((trip) => trip['id'] == id);
+    });
+
+    // We must save the updated list back to storage
+    // Note: We reverse it back or just save the current list depending on how you want strictly ordered
+    // For simplicity, we save the current state (which is reversed relative to original append order, 
+    // but that's fine for this use case, or we can reverse back).
+    await prefs.setString('savedtrips', jsonEncode(_trips.reversed.toList()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Saved History', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: Container(
+        // CSS STYLE: Matching Red Gradient Background
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.red.shade400, Colors.red.shade700],
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : _trips.isEmpty
+                ? _buildEmptyState()
+                : _buildTripList(),
+      ),
+    );
+  }
+
+  Widget _buildTripList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _trips.length,
+      itemBuilder: (context, index) => _buildHistoryCard(_trips[index]),
+    );
+  }
+
+  Widget _buildHistoryCard(Map<String, dynamic> trip) {
+    // Parse the date string back to a DateTime object
+    final DateTime date = DateTime.parse(trip['date']);
+    final List<dynamic> items = trip['items'];
+    final double total = trip['totalBudget']; // Depending on how you saved it, might need (trip['totalBudget'] as num).toDouble()
+
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.red.shade100,
+          child: const Icon(Icons.history, color: Colors.red),
+        ),
+        // Title: Formatted Date
+        title: Text(
+          DateFormat('dd MMM yyyy').format(date),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        // Subtitle: Time
+        subtitle: Text(DateFormat('hh:mm a').format(date)),
+        trailing: Text(
+          'RM ${total.toStringAsFixed(2)}',
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 16),
+        ),
+        children: [
+          const Divider(),
+          // Loop through the items inside this specific trip
+          ...items.map((item) => ListTile(
+                dense: true,
+                title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                // Show Adult/Child info we saved earlier
+                subtitle: Text('Adult x${item['adultQty']} • Kids x${item['childQty']}'),
+                trailing: Text('RM ${item['total'].toStringAsFixed(2)}'),
+              )),
+          
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: TextButton.icon(
+              onPressed: () => _deleteTrip(trip['id']),
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              label: const Text('Remove from History', style: TextStyle(color: Colors.red)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_open, size: 80, color: Colors.white54),
+          SizedBox(height: 16),
+          Text('No history found', style: TextStyle(color: Colors.white, fontSize: 18)),
+        ],
+      ),
+    );
+  }
+}
